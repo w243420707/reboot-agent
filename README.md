@@ -88,7 +88,11 @@ GitHub Actions builds all release targets when a `v*` tag is pushed. Each binary
 
 ## Changelog
 
-### v0.1.1 - 2026-09-11
+### v0.1.2 - 2026-09-10
+
+- Correct the published release-date metadata and update the one-command installer to the latest release.
+
+### v0.1.1 - 2026-09-10
 
 - Set the default GitHub repository for the one-command installer.
 - Publish the initial public GitHub release configuration.

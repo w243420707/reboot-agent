@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-VERSION="${REBOOT_AGENT_VERSION:-v0.1.1}"
+VERSION="${REBOOT_AGENT_VERSION:-v0.1.2}"
 REPO="${REBOOT_AGENT_REPO:-w243420707/reboot-agent}"
 INSTALL_DIR="${REBOOT_AGENT_INSTALL_DIR:-/usr/local/bin}"
 AGENT_BIN="$INSTALL_DIR/reboot-agent"
