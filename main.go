@@ -53,6 +53,12 @@ func main() {
 		} else {
 			err = stopAgent()
 		}
+	case "shutdown":
+		if !isRoot() {
+			err = fmt.Errorf("root privileges are required")
+		} else {
+			err = shutdownAgent()
+		}
 	case "uninstall":
 		if !isRoot() {
 			err = fmt.Errorf("root privileges are required")
@@ -88,6 +94,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  stop            Disable and stop the agent")
 	fmt.Fprintln(w, "  uninstall       Remove the agent and its startup entry")
 	fmt.Fprintln(w, "  daemon          Run the background worker (used by startup scripts)")
+	fmt.Fprintln(w, "  shutdown        Stop the running process without changing the configuration")
 	fmt.Fprintln(w, "  --version       Print version")
 }
 

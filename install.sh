@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-VERSION="${REBOOT_AGENT_VERSION:-v0.1.2}"
+VERSION="${REBOOT_AGENT_VERSION:-v0.1.3}"
 REPO="${REBOOT_AGENT_REPO:-w243420707/reboot-agent}"
 INSTALL_DIR="${REBOOT_AGENT_INSTALL_DIR:-/usr/local/bin}"
 AGENT_BIN="$INSTALL_DIR/reboot-agent"
@@ -100,11 +100,27 @@ install_openrc() {
     write_file "$service_path" 0755 <<EOF
 #!/sbin/openrc-run
 name="reboot-agent"
-command="$AGENT_BIN"
-command_args="daemon"
-command_background="yes"
-pidfile="/run/reboot-agent/reboot-agent.pid"
-respawn_delay=5
+
+depend() {
+    need localmount
+    after bootmisc
+}
+
+start() {
+    ebegin "Starting reboot-agent"
+    "$AGENT_BIN" start
+    eend \$?
+}
+
+stop() {
+    ebegin "Stopping reboot-agent"
+    "$AGENT_BIN" shutdown
+    eend \$?
+}
+
+status() {
+    "$AGENT_BIN" status
+}
 EOF
     rc-update add reboot-agent default
     rc-service reboot-agent restart 2>/dev/null || rc-service reboot-agent start
@@ -127,8 +143,8 @@ install_sysv() {
 
 case "\${1:-start}" in
 start) "$AGENT_BIN" start ;;
-stop) "$AGENT_BIN" stop ;;
-restart) "$AGENT_BIN" stop || true; "$AGENT_BIN" start ;;
+stop) "$AGENT_BIN" shutdown ;;
+restart) "$AGENT_BIN" shutdown || true; "$AGENT_BIN" start ;;
 status) "$AGENT_BIN" status ;;
 *) echo "Usage: \$0 {start|stop|restart|status}" >&2; exit 2 ;;
 esac
@@ -252,11 +268,19 @@ ACTUAL=$(sha256 "$TMP_DIR/$ASSET")
 [ "$EXPECTED" = "$ACTUAL" ] || fail "下载文件校验失败。"
 
 chmod 0755 "$TMP_DIR/$ASSET"
+had_config=0
+if [ -f /etc/reboot-agent/config ]; then
+    had_config=1
+fi
 cp "$TMP_DIR/$ASSET" "$AGENT_BIN"
 chmod 0755 "$AGENT_BIN"
 
-printf '首次配置：\n'
-"$AGENT_BIN" configure
+if [ "$had_config" -eq 1 ]; then
+    printf '检测到现有配置，已保留原来的定时和内存阈值。\n'
+else
+    printf '首次配置：\n'
+    "$AGENT_BIN" configure
+fi
 detect_and_install_startup
 REBOOT_AGENT_CONFIG_DIR=/etc/reboot-agent "$AGENT_BIN" status || true
 printf '开机自启已配置，reboot-agent 正在运行。\n'

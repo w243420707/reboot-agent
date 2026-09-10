@@ -45,16 +45,24 @@ func stopAgent() error {
 	if err := saveConfig(config); err != nil {
 		return err
 	}
+	if err := shutdownAgent(); err != nil {
+		return err
+	}
+	fmt.Println("reboot-agent 已停止。")
+	return nil
+}
 
+func shutdownAgent() error {
 	status, statusErr := loadRuntimeStatus()
 	if statusErr == nil && processAlive(status.PID) {
 		if err := signalProcess(status.PID); err != nil {
 			return err
 		}
-		fmt.Printf("reboot-agent 已停止（PID %d）。\n", status.PID)
 		return nil
 	}
-	fmt.Println("reboot-agent 已停止。")
+	if statusErr != nil && !errors.Is(statusErr, os.ErrNotExist) {
+		return statusErr
+	}
 	return nil
 }
 

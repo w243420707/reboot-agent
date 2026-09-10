@@ -88,6 +88,12 @@ GitHub Actions builds all release targets when a `v*` tag is pushed. Each binary
 
 ## Changelog
 
+### v0.1.3 - 2026-09-10
+
+- Fix OpenRC automatic startup so it no longer conflicts with the Agent's own process record.
+- Keep the Agent enabled when OpenRC or SysV stops it during a normal system shutdown.
+- Preserve existing configuration when rerunning the installer for an update.
+
 ### v0.1.2 - 2026-09-10
 
 - Correct the published release-date metadata and update the one-command installer to the latest release.
