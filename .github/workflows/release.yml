@@ -1,0 +1,85 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Check version
+        shell: bash
+        run: test "$(cat VERSION)" = "${GITHUB_REF_NAME}"
+      - name: Test
+        run: go test ./...
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goarch: amd64
+            asset: amd64
+          - goarch: arm64
+            asset: arm64
+          - goarch: 386
+            asset: 386
+          - goarch: arm
+            goarm: '7'
+            asset: armv7
+          - goarch: mips
+            asset: mips
+          - goarch: mipsle
+            asset: mipsle
+          - goarch: riscv64
+            asset: riscv64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        shell: bash
+        env:
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" GOARM="$GOARM" \
+            go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" \
+            -o "dist/reboot-agent-linux-${{ matrix.asset }}" .
+          sha256sum "dist/reboot-agent-linux-${{ matrix.asset }}" \
+            > "dist/reboot-agent-linux-${{ matrix.asset }}.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.asset }}
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Create checksums file
+        shell: bash
+        run: cat dist/*.sha256 > dist/checksums.txt
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" --title "reboot-agent ${GITHUB_REF_NAME}" --generate-notes dist/reboot-agent-* dist/checksums.txt install.sh
