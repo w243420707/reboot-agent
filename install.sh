@@ -1,11 +1,18 @@
 #!/bin/sh
 set -eu
 
-VERSION="${REBOOT_AGENT_VERSION:-v0.1.3}"
+VERSION="${REBOOT_AGENT_VERSION:-v0.1.4}"
 REPO="${REBOOT_AGENT_REPO:-w243420707/reboot-agent}"
 INSTALL_DIR="${REBOOT_AGENT_INSTALL_DIR:-/usr/local/bin}"
 AGENT_BIN="$INSTALL_DIR/reboot-agent"
+CONFIG_DIR="${REBOOT_AGENT_CONFIG_DIR:-/etc/reboot-agent}"
+CONFIG_FILE="$CONFIG_DIR/config"
 TMP_DIR="${TMPDIR:-/tmp}/reboot-agent-install.$$"
+
+# 默认配置：hours=0 表示不做定时重启，只看内存占用。
+DEFAULT_HOURS=0
+DEFAULT_MEMORY=80
+CONFIG_MODE=default
 
 cleanup() {
     rm -rf "$TMP_DIR"
@@ -46,11 +53,54 @@ write_file() {
 write_descriptor() {
     type=$1
     path=$2
-    mkdir -p /etc/reboot-agent
-    write_file /etc/reboot-agent/startup 0600 <<EOF
+    mkdir -p "$CONFIG_DIR"
+    write_file "$CONFIG_DIR/startup" 0600 <<EOF
 type=$type
 path=$path
 EOF
+}
+
+prompt_choice() {
+    if [ ! -r /dev/tty ]; then
+        printf '未检测到交互终端，使用默认配置。\n'
+        CONFIG_MODE=default
+        return 0
+    fi
+    printf '\n请选择配置方式：\n'
+    printf '  1) 默认配置：不设定时重启，内存占用超过 %s%% 自动重启（直接回车）\n' "$DEFAULT_MEMORY"
+    printf '  2) 手动配置：自定义定时重启间隔与内存阈值\n'
+    while :; do
+        printf '请选择 [1]: '
+        answer=
+        IFS= read -r answer </dev/tty || answer=
+        case "$(printf '%s' "$answer" | tr -d '[:space:]')" in
+            ''|1)
+                CONFIG_MODE=default
+                return 0
+                ;;
+            2)
+                CONFIG_MODE=manual
+                return 0
+                ;;
+            *)
+                printf '请输入 1 或 2。\n'
+                ;;
+        esac
+    done
+}
+
+write_default_config() {
+    mkdir -p "$CONFIG_DIR"
+    write_file "$CONFIG_FILE" 0600 <<EOF
+hours=$DEFAULT_HOURS
+memory_threshold=$DEFAULT_MEMORY
+enabled=true
+EOF
+    if ! REBOOT_AGENT_CONFIG_DIR="$CONFIG_DIR" "$AGENT_BIN" status >/dev/null 2>&1; then
+        rm -f "$CONFIG_FILE"
+        fail "当前版本不支持默认配置，请升级到最新版本，或重新运行并选择 2 手动配置。"
+    fi
+    printf '已启用默认配置：不设定时重启，内存超过 %s%% 自动重启。\n' "$DEFAULT_MEMORY"
 }
 
 install_systemd() {
@@ -277,10 +327,16 @@ chmod 0755 "$AGENT_BIN"
 
 if [ "$had_config" -eq 1 ]; then
     printf '检测到现有配置，已保留原来的定时和内存阈值。\n'
+    printf '如需修改，请运行：%s configure\n' "$AGENT_BIN"
 else
-    printf '首次配置：\n'
-    "$AGENT_BIN" configure
+    prompt_choice
+    if [ "$CONFIG_MODE" = "manual" ]; then
+        printf '手动配置：\n'
+        "$AGENT_BIN" configure </dev/tty
+    else
+        write_default_config
+    fi
 fi
 detect_and_install_startup
-REBOOT_AGENT_CONFIG_DIR=/etc/reboot-agent "$AGENT_BIN" status || true
+REBOOT_AGENT_CONFIG_DIR="$CONFIG_DIR" "$AGENT_BIN" status || true
 printf '开机自启已配置，reboot-agent 正在运行。\n'

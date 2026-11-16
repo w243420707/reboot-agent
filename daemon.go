@@ -40,7 +40,7 @@ func runDaemon() error {
 	status := RuntimeStatus{
 		PID:          os.Getpid(),
 		StartedAt:    startedAt.Unix(),
-		NextRebootAt: nextReboot.Unix(),
+		NextRebootAt: rebootAt(nextReboot),
 		UpdatedAt:    startedAt.Unix(),
 		LastEvent:    "agent started",
 	}
@@ -76,7 +76,7 @@ func runDaemon() error {
 				return err
 			}
 			activeHours = latestConfig.Hours
-			status.NextRebootAt = nextReboot.Unix()
+			status.NextRebootAt = rebootAt(nextReboot)
 			status.LastEvent = "schedule reloaded"
 		}
 
@@ -97,7 +97,7 @@ func runDaemon() error {
 				if rebootErr != nil {
 					status.LastEvent = "memory-triggered reboot failed"
 					status.LastError = rebootErr.Error()
-					status.NextRebootAt = nextReboot.Unix()
+					status.NextRebootAt = rebootAt(nextReboot)
 				}
 				if rebootErr == nil {
 					return nil
@@ -105,7 +105,7 @@ func runDaemon() error {
 			}
 		}
 
-		if !checkTime.Before(nextReboot) {
+		if !nextReboot.IsZero() && !checkTime.Before(nextReboot) {
 			status.LastEvent = "scheduled reboot reached"
 			status.LastError = ""
 			status.UpdatedAt = checkTime.Unix()

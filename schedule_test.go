@@ -21,8 +21,21 @@ func TestNextRebootAtStaysWithinRandomRange(t *testing.T) {
 	}
 }
 
+func TestNextRebootAtDisablesScheduleForZeroHours(t *testing.T) {
+	next, err := nextRebootAt(0, time.Now())
+	if err != nil {
+		t.Fatalf("nextRebootAt returned error: %v", err)
+	}
+	if !next.IsZero() {
+		t.Fatalf("expected zero deadline, got %s", next)
+	}
+}
+
 func TestNextRebootAtRejectsInvalidHours(t *testing.T) {
-	if _, err := nextRebootAt(0, time.Now()); err == nil {
+	if _, err := nextRebootAt(-1, time.Now()); err == nil {
+		t.Fatal("expected invalid hours error")
+	}
+	if _, err := nextRebootAt(8761, time.Now()); err == nil {
 		t.Fatal("expected invalid hours error")
 	}
 }

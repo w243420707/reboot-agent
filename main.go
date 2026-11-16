@@ -108,7 +108,7 @@ func configureInteractive(in io.Reader, out io.Writer) error {
 	}
 
 	reader := bufio.NewReader(in)
-	hours, err := promptInt(reader, out, "定时重启间隔（小时，1-8760）", config.Hours, 1, 8760, true)
+	hours, err := promptInt(reader, out, "定时重启间隔（小时，0 关闭；1-8760）", config.Hours, 0, 8760, false)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,11 @@ func configureInteractive(in io.Reader, out io.Writer) error {
 		return err
 	}
 
-	fmt.Fprintf(out, "已保存：每 %d 小时定时重启，内存阈值 %s。\n", hours, memoryThresholdLabel(memoryThreshold))
+	if hours == 0 {
+		fmt.Fprintf(out, "已保存：定时重启已关闭，内存阈值 %s。\n", memoryThresholdLabel(memoryThreshold))
+	} else {
+		fmt.Fprintf(out, "已保存：每 %d 小时定时重启，内存阈值 %s。\n", hours, memoryThresholdLabel(memoryThreshold))
+	}
 	return nil
 }
 

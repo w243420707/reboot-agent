@@ -5,6 +5,7 @@
 ## What It Does
 
 - Asks for a restart interval in hours during the first installation.
+- Offers a default preset (no scheduled restart, memory threshold `80%`) that is used when you press Enter, or manual configuration.
 - Adds a fresh random delay of 1-59 minutes and 0-59 seconds to every cycle.
 - Checks RAM plus swap every 5 seconds; the first-install memory threshold defaults to `80%`.
 - Restarts immediately when memory usage is above the configured threshold.
@@ -19,7 +20,7 @@ There is intentionally no boot grace period or reboot-loop protection. If memory
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/w243420707/reboot-agent/main/install.sh)"
 ```
 
-The installer requires root, detects the Linux architecture, downloads the matching static binary, verifies SHA-256, asks for the hours and memory threshold, and configures one available boot mechanism. To install a different release, set `REBOOT_AGENT_VERSION`; to use a fork, set `REBOOT_AGENT_REPO`.
+The installer requires root, detects the Linux architecture, downloads the matching static binary, verifies SHA-256, then offers two choices: press Enter for the default preset (no scheduled restart, memory threshold `80%`), or enter `2` to configure the hours and memory threshold yourself. Finally it configures one available boot mechanism. To install a different release, set `REBOOT_AGENT_VERSION`; to use a fork, set `REBOOT_AGENT_REPO`.
 
 Supported release targets:
 
@@ -44,7 +45,7 @@ reboot-agent --version
 
 `configure` asks for:
 
-- Hours: `1-8760`, required.
+- Hours: `0-8760`. `0` disables the scheduled restart, so only the memory threshold can trigger a reboot.
 - Memory threshold: `1-99` percent, or `0` to disable memory-triggered restarts.
 
 The configuration is stored in `/etc/reboot-agent/config`. Runtime status is stored in `/run/reboot-agent/status`.
@@ -87,6 +88,13 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main
 GitHub Actions builds all release targets when a `v*` tag is pushed. Each binary and its SHA-256 file are uploaded to the GitHub Release.
 
 ## Changelog
+
+### v0.1.4 - 2026-11-17
+
+- Add a default preset to the installer: press Enter to install without a scheduled restart and a `80%` memory threshold, or enter `2` for manual configuration.
+- Allow `hours=0` so the scheduled restart can be turned off while keeping the memory trigger.
+- Report `定时重启：已关闭` in the status output when the schedule is disabled.
+- Read installer answers from the terminal device so `curl | sh` installs still work.
 
 ### v0.1.3 - 2026-09-10
 

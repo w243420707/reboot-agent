@@ -102,7 +102,11 @@ func printStatus(out io.Writer) error {
 	}
 
 	fmt.Fprintf(out, "状态：%s\n", enabledLabel(config.Enabled))
-	fmt.Fprintf(out, "定时重启：每 %d 小时，加随机 1-59 分钟和 0-59 秒\n", config.Hours)
+	if config.Hours == 0 {
+		fmt.Fprintln(out, "定时重启：已关闭（只在内存超过阈值时重启）")
+	} else {
+		fmt.Fprintf(out, "定时重启：每 %d 小时，加随机 1-59 分钟和 0-59 秒\n", config.Hours)
+	}
 	fmt.Fprintf(out, "内存阈值：%s\n", memoryThresholdLabel(config.MemoryThreshold))
 
 	if memory, memoryErr := detectMemoryUsage(); memoryErr == nil {

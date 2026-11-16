@@ -56,7 +56,7 @@ func loadConfig() (Config, error) {
 		return Config{}, fmt.Errorf("read config: %w", err)
 	}
 
-	hours, err := requiredInt(values, "hours", 1, 8760)
+	hours, err := requiredInt(values, "hours", 0, 8760)
 	if err != nil {
 		return Config{}, err
 	}
@@ -73,8 +73,8 @@ func loadConfig() (Config, error) {
 }
 
 func saveConfig(config Config) error {
-	if config.Hours < 1 || config.Hours > 8760 {
-		return errors.New("hours must be between 1 and 8760")
+	if config.Hours < 0 || config.Hours > 8760 {
+		return errors.New("hours must be between 0 and 8760")
 	}
 	if config.MemoryThreshold < 0 || config.MemoryThreshold > 99 {
 		return errors.New("memory threshold must be between 0 and 99")
